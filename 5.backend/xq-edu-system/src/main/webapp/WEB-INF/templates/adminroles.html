@@ -1,0 +1,431 @@
+<script src="/static/jquery-3.2.1.min.js">
+    window.onunload(alert("jin7"))
+</script>
+<html>
+<head>
+    <title>角色列表</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/static/table/bootstrap-table.min.css"/>
+    <script type="text/javascript" src="/static/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/table/bootstrap-table.js"></script>
+    <script type="text/javascript"
+            src="/static/table/locale/bootstrap-table-zh-CN.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/sweetalert/sweetalert.css"/>
+    <script type="text/javascript"
+            src="/static/sweetalert/sweetalert.min.js"></script>
+
+    <link rel="stylesheet" href="/static/date/bootstrap-datetimepicker.min.css"/>
+    <script type="text/javascript" src="/static/date/Moment.js"></script>
+    <script type="text/javascript"
+            src="/static/date/bootstrap-datetimepicker.min.js"></script>
+
+    <script>
+
+        $(function () {
+
+            //异步加载新增的时候的菜单列表
+            $.getJSON("/adminmenus/list", {}, function (releset) {
+                var e = releset.data;
+                $(e).each(function () {
+                    if(this.parentId==0){
+                        $('#adminMenus_add').append("<input type='checkbox' id='add_"+this.id+"' name='adminMenus_add' value='" + this.id + "'/>" + this.title + "</br>");
+                        for (var i = 0; i < e.length; i++) {
+                            if(e[i].parentId==this.id){
+                                $('#adminMenus_add').append("&nbsp;&nbsp;&nbsp;&nbsp;<input lang='lang_"+e[i].parentId+"' onclick='clickChild("+e[i].parentId+");' type='checkbox' name='adminMenus_add' value='" + e[i].id + "'/>" + e[i].title + "</br>");
+                            }
+                        }
+                    }
+                })
+            });
+
+        });
+
+        //点击二级菜单
+        function clickChild(parentId){
+            var checkedChilds=$("[lang=lang_"+parentId+"]:checked");
+            if(checkedChilds.length > 0){
+                $("#add_"+parentId).prop("checked",true);
+            }else{
+                $("#add_"+parentId).prop("checked",false);
+            }
+        }
+
+
+        $(function () {
+            $('#table').bootstrapTable({
+                url: '/adminrole/queryPage',
+                method: 'get',
+                contentType: "application/x-www-form-urlencoded",
+                columns: [
+                    {field: 'id', title: '角色编号', sortable: true},
+                    {field: 'roleName', title: '角色名称', sortable: true},
+                    {field: 'remark', title: '角色描述', sortable: true},
+                    {
+                        field: 'xx', title: '操作',
+                        formatter: function (value, row, index) {
+                            return "<a title='删除' href='javascript:del1("
+                                + row.id + ")'><span class='glyphicon glyphicon-trash'></span></a> | <a href='javascript:upd1(" + row.id + ")' class='glyphicon glyphicon-pencil'></a>";
+                        }
+
+                    }
+                ],
+                queryParamsType: '',
+                queryParams: queryParams,
+                height: 360,
+                pageList: [5, 10, 15],
+                pageNumber: 1,
+                pageSize: 5,
+                pagination: true,
+                sidePagination: 'server',
+
+            })
+        });
+
+        //删除
+        function del1(id) {
+            swal({
+                    title: "确定删除吗？",
+                    text: "您将无法恢复！",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#DD6B55",
+                    confirmButtonText: "确定删除！",
+                    cancelButtonText: "取消删除！",
+                    closeOnConfirm: false,
+                    closeOnCancel: false
+                },
+                function (isConfirm) {
+                    if (isConfirm) {
+                        var opt = $('#table').bootstrapTable('getOptions');
+                        var subjectid = $('#cardid').val();
+                        $.post('/adminrole/delete/' + id, {
+                            "_method": 'delete'
+                        }, function (result) {
+                            if (result.code == 200) {
+                                swal("删除！", "删除成功", "success");
+                            } else if(result.code == 800) {
+                                swal("删除！", "数据使用中，勿删除！", "error");
+                            }else{
+                                swal("删除！", "删除异常！", "error");
+                            }
+                            search();
+                        });
+                    } else {
+                        swal("取消！", "您已取消删除)", "error");
+                    }
+                });
+        }
+
+        //获取当前的条件个页面页数即使更新值
+        function queryParams(afds) {
+            var i = {
+                "pageSize": afds.pageSize,
+                "pageNumber": afds.pageNumber,
+                "roleName": $('#cardid').val(),
+            };
+            return i;
+        }
+
+        //查询
+        function search() {
+            var opt = $('#table').bootstrapTable('getOptions');
+            var roleName = $('#cardid').val();
+
+            $.getJSON("/adminrole/queryPage", {
+                "pageSize": opt.pageSize,
+                "pageNumber": opt.pageNumber,
+                "roleName": roleName
+            }, function (releset) {
+                $("#table").bootstrapTable('load', releset);
+            })
+        }
+
+        function save() {
+            // if (!validateAdd()) {
+            //     return;
+            // }
+            //接收数据
+            var opt = $('#table').bootstrapTable('getOptions');
+
+            var roleName = $('#roleName').val();
+            var remark = $("#remark").val();
+
+            //菜单集合
+            var menusIds = new Array();
+            var adminMenus_add = $("[name='adminMenus_add']:checked");
+            for (var i = 0; i < adminMenus_add.length; i++) {
+                var menuId = adminMenus_add[i].value;
+                menusIds.push(menuId);
+            }
+            if (menusIds.length == 0) {
+                alert("请给角色赋菜单！");
+                return;
+            }
+
+            $("#myModal").modal("hide");
+            $.post("/adminrole/add", {
+                "roleName": roleName,
+                "remark": remark,
+                "menusIds": menusIds.toString()
+            }, function (releset) {
+                if (releset.code == 200) {
+                    $("#dg").bootstrapTable('load', releset);
+                    $('#exampleModal').modal('hide');
+                    swal(
+                        {
+                            title: "添加成功",
+                            type: "success",
+                            timer: 1500,
+                            showConfirmButton: false
+                        },function() {
+                            location.reload();
+                        }
+                    );
+                } else {
+                    swal(
+                        {
+                            title: "添加失败",
+                            type: "warning",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    )
+                }
+            })
+        }
+
+
+        function upd1(id) {
+            $("#myModal2").modal("show");
+            $('#id').val(id);//隐藏ID
+            $('#adminMenus_update').html(""); //清空复选框
+
+            $.getJSON('/adminrole/queryById/' + id, function (result) {
+                $("#table").bootstrapTable("load", result);
+                $("#uproleName").val(result.data.roleName);
+                $("#upremark").val(result.data.remark);
+
+                //要回显的集合
+                var menuIds = new Array();
+                $.getJSON("/admin-role-menus/queryByRoleId/" + id, {}, function (res) {
+                    if (res.code == 200) {
+                        var d = res.data;
+                        for (var i = 0; i < d.length; i++) {
+                            var menuId = d[i].menuId;
+                            menuIds.push(menuId);
+                        }
+                    }
+
+                    //异步加载新增的时候的角色列表
+                    $.getJSON("/adminmenus/list", {}, function (releset) {
+                        var e = releset.data;
+                        $(e).each(function () {
+                            if(this.parentId==0){
+                                if(isHasMenuId(menuIds,this.id)){
+                                    $('#adminMenus_update').append("<input checked type='checkbox' id='up_"+this.id+"' name='adminMenus_update' value='" + this.id + "'/>" + this.title + "</br>");
+                                }else{
+                                    $('#adminMenus_update').append("<input type='checkbox' id='up_"+this.id+"' name='adminMenus_update' value='" + this.id + "'/>" + this.title + "</br>");
+                                }
+                                for (var i = 0; i < e.length; i++) {
+                                    if(e[i].parentId==this.id){
+                                        if(isHasMenuId(menuIds,e[i].id)){
+                                            $('#adminMenus_update').append("&nbsp;&nbsp;&nbsp;&nbsp;<input checked lang='uplang_"+e[i].parentId+"' onclick='upclickChild("+e[i].parentId+");' type='checkbox' name='adminMenus_update' value='" + e[i].id + "'/>" + e[i].title + "</br>");
+                                        }else{
+                                            $('#adminMenus_update').append("&nbsp;&nbsp;&nbsp;&nbsp;<input lang='uplang_"+e[i].parentId+"' onclick='upclickChild("+e[i].parentId+");' type='checkbox' name='adminMenus_update' value='" + e[i].id + "'/>" + e[i].title + "</br>");
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    });
+
+                });
+
+
+            });
+        }
+
+        //点击二级菜单
+        function upclickChild(parentId){
+            var checkedChilds=$("[lang=uplang_"+parentId+"]:checked");
+            if(checkedChilds.length > 0){
+                $("#up_"+parentId).prop("checked",true);
+            }else{
+                $("#up_"+parentId).prop("checked",false);
+            }
+        }
+
+        function isHasMenuId(menuIds, menuId) {
+            var b = false;
+            for (var i = 0; i < menuIds.length; i++) {
+                if (menuIds[i] == menuId) {
+                    b = true;
+                    break;
+                }
+            }
+            return b;
+        }
+
+        function kong() {
+            $("#name").val("");
+            $("#money").val("");
+        }
+
+        function upd() {
+            var opt = $('#table').bootstrapTable('getOptions');
+
+            var id = $('#id').val();
+            var uproleName = $("#uproleName").val();
+            var upremark = $("#upremark").val();
+
+            //菜单集合
+            var menusIds = new Array();
+            var adminMenus_update = $("[name='adminMenus_update']:checked");
+            for (var i = 0; i < adminMenus_update.length; i++) {
+                var menuId = adminMenus_update[i].value;
+                menusIds.push(menuId);
+            }
+            if (menusIds.length == 0) {
+                alert("请给角色赋菜单！");
+                return;
+            }
+
+            $("#myModal2").modal("hide");
+            $.post('/adminrole/update', {
+                'id': id,
+                'roleName': uproleName,
+                'remark': upremark,
+                'menusIds':menusIds.toString(),
+                '_method': 'put'
+            }, function (result) {
+                if (result.code == 200) {
+                    swal("更新！", "更新成功", "success",function() {
+                        location.reload();
+                    });
+                } else {
+                    swal("更新！", "更新失败", "error");
+                }
+            });
+        }
+    </script>
+</head>
+<body background="/static/HTmoban/images/tongji4.jpg">
+<div class="panel panel-default">
+    <div class="panel-body">
+        <form class="form-inline">
+            <div class="input-group input-daterange">
+                <label for="cardid" class="control-label">角色名称:</label>
+                <input id="cardid" type="text" class="form-control">
+            </div>
+            <button onclick="search()" type="button" class="btn btn-default" style="margin-top: 20px">查询</button>
+            <button type="button" class="btn btn-default" onclick="kong()" style="float: right; margin-top: 20px"
+                    data-toggle="modal" data-target="#myModal"><span class="glyphicon glyphicon-plus"></span>添加角色
+            </button>
+        </form>
+    </div>
+
+</div>
+<div>
+    <table id="table"></table>
+</div>
+<div class="modal fade" id="myModal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"
+                        aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="myModalLabel">❤增加新角色</h4>
+            </div>
+            <div class="modal-body">
+                <!-- form开始 -->
+                <form>
+                    <div class="form-group">
+                        <label for="roleName" class="col-sm-4 control-label" style="margin-top: 10px">角色名称</label>
+                        <div class="col-sm-8">
+                            <input type="text" style="margin-top: 10px" class="form-control" id="roleName"
+                                   parsley-trigger="change" parsley-required="true" parsley-minlength="4"
+                                   parsley-type="email" parsley-validation-minlength="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="remark" class="col-sm-4 control-label" style="margin-top: 10px">角色描述</label>
+                        <div class="col-sm-8">
+                            <input type="text" style="margin-top: 10px" class="form-control" id="remark"
+                                   parsley-trigger="change" parsley-required="true" parsley-minlength="4"
+                                   parsley-type="email" parsley-validation-minlength="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label" style="margin-top: 10px">角色菜单</label>
+                        <div class="col-sm-8">
+                            <div id="adminMenus_add">
+                                </br></br>
+
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                &nbsp;
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button onclick="save()" id="add" type="button" class="btn btn-primary">新增角色</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="myModal2">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"
+                        aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="myModalLabel2">❤修改用户角色</h4>
+            </div>
+            <div class="modal-body">
+                <!-- form开始 -->
+                <form>
+                    <input type="hidden" name="id" id="id"/>
+                    <div class="form-group">
+                        <label for="roleName" class="col-sm-4 control-label" style="margin-top: 10px">角色名称</label>
+                        <div class="col-sm-8">
+                            <input type="text" style="margin-top: 10px" class="form-control" id="uproleName"
+                                   parsley-trigger="change" parsley-required="true" parsley-minlength="4"
+                                   parsley-type="email" parsley-validation-minlength="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="remark" class="col-sm-4 control-label" style="margin-top: 10px">角色描述</label>
+                        <div class="col-sm-8">
+                            <input type="text" style="margin-top: 10px" class="form-control" id="upremark"
+                                   parsley-trigger="change" parsley-required="true" parsley-minlength="4"
+                                   parsley-type="email" parsley-validation-minlength="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label" style="margin-top: 10px">角色菜单</label>
+                        <div class="col-sm-8">
+                            <div id="adminMenus_update">
+                                </br></br>
+
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                &nbsp;
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button onclick="upd()" type="button" class="btn btn-primary">修改角色</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

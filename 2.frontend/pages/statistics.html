@@ -1,0 +1,399 @@
+<html>
+<script type="text/javascript" src="/static/jquery-3.2.1.min.js"></script>
+<script src="/static/echarts.min.js"></script>
+<head>
+    <title>收入统计图</title>
+</head>
+<body background="/static/HTmoban/images/tongji4.jpg">
+<div class="panel panel-default">
+    <div class="panel-body" style="width:400px; display: inline-block" >
+
+        <select id="xuan" class="form-control" oninput="cha()" style="width:100px; margin-right: 10px; float: left">
+            <option value="1">柱状图</option>
+            <option value="2">饼状图</option>
+            <option value="3">折线图</option>
+            <option value="4">雷达图</option>
+        </select>
+
+        &nbsp; &nbsp; &nbsp;
+
+        <select id="year" class="form-control" oninput="selectYear()" style="width:100px; margin-right: 10px; float: left">
+            <option value="2020">2020年</option>
+            <option value="2021">2021年</option>
+            <option value="2022">2022年</option>
+            <option value="2023">2023年</option>
+            <option value="2024">2024年</option>
+            <option value="2025">2025年</option>
+        </select>
+
+    </div>
+    <div id="main" style="width: 1100px;height:550px;">
+
+    </div>
+
+</div>
+<div id="counts" style="width:500px;height:400px;margin:0 auto;"></div>
+<script type="text/javascript">
+
+    //默认年份
+    var year=$("#year").val();
+
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));
+
+    //选择年份
+    function selectYear() {
+        var year= $("#year").val();
+        //alert(year);
+        //调用
+        cha();
+    }
+
+    function cha() {
+        year = $("#year").val();
+        myChart.clear();
+        var a = $("#xuan").val();
+        if (a == 1) {
+            myChart.clear();
+            option = {
+                title: {
+                    text: year + '年每月收入统计'
+                },
+                tooltip: {},
+                legend: {
+                    data: ['金额']
+                },
+                xAxis: {
+                    data: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"],
+                    axisLabel: {
+                        interval: 0
+                    }
+                },
+                yAxis: {},
+                series: [{
+                    name: '金额',
+                    type: 'bar',
+                    data: []
+                }]
+            };
+
+            // 使用刚指定的配置项和数据显示图表。
+            myChart.setOption(option);
+            $.getJSON('/statistics/tongji', {"year": year}, function (data) {
+                //重新给table绑定数据
+                myChart.setOption({
+                    xAxis: {
+                        data: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                    },
+                    series: [{
+                        // 根据名字对应到相应的系列
+                        name: '金额',
+                        data: data
+                    }]
+                });
+            });
+        } else if (a == 2) {
+            myChart.clear();
+            option = {
+                title: {
+                    text: year + '年每月收入统计',
+                    subtext: '',
+                    x: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: "{a} <br/>{b} : {c} ({d}%)"
+                },
+                legend: {
+                    orient: 'vertical',
+                    x: 'left',
+                    data: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                },
+                toolbox: {
+                    show: true,
+                    feature: {
+                        mark: {show: true},
+                        dataView: {show: true, readOnly: false},
+                        magicType: {
+                            show: true,
+                            type: ['pie', 'funnel'],
+                            option: {
+                                funnel: {
+                                    x: '25%',
+                                    width: '50%',
+                                    funnelAlign: 'left',
+                                    max: 1548
+                                }
+                            }
+                        },
+                        restore: {show: true},
+                        saveAsImage: {show: true}
+                    }
+                },
+                calculable: true,
+                series: [
+                    {
+                        name: '',
+                        type: 'pie',
+                        radius: '55%',
+                        center: ['50%', '60%'],
+                        data: [],
+                        itemStyle: {
+                            normal: {
+                                label: {
+                                    show: function (value) {
+                                        if (value == 0.00) return false;
+                                    }(),
+                                    formatter: '{b} : {c} ({d}%)'
+                                },
+                                labelLine: {
+                                    show: function (value) {
+                                        if (value == 0.00) return false;
+                                    }()
+                                }
+                            }
+                        }
+
+                    }
+                ]
+            };
+            ;
+            if (option && typeof option === "object") {
+                myChart.setOption(option, true);
+            }
+
+            //饼图动态赋值
+            $.ajax({
+                type: "get",
+                url: "/statistics/tongji",
+                cache: false,    //禁用缓存
+                data: {"year": year},
+                dataType: "json",
+                success: function (result) {
+                    //定义两个数组
+                    var names = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+                    var nums = [];
+                    $.each(result, function (key, values) { //此处我返回的是list<String,map<String,String>>循环map
+                        var obj = new Object();
+                        obj.name = names[key];
+                        obj.value = values;
+                        nums.push(obj);
+                    });
+                    myChart.setOption({ //加载数据图表
+                        legend: {
+                            data: names
+                        },
+                        series: {
+                            // 根据名字对应到相应的系列
+                            name: ['金额'],
+                            data: nums
+                        }
+                    });
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    alert("查询失败");
+                }
+            });
+        } else if (a == 3) {
+            myChart.clear();
+            option = {
+                title: {
+                    text: year + '年每月收入统计'
+                },
+                xAxis: {
+                    type: 'category',
+                    axisLabel: {
+                        interval: 0
+                    },
+                    data: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [{
+                    data: [],
+                    type: 'line'
+                }]
+            };
+
+            // 使用刚指定的配置项和数据显示图表。
+            myChart.setOption(option);
+            $.getJSON('/statistics/tongji', {"year": year}, function (data) {
+                //重新给table绑定数据
+                myChart.setOption({
+                    xAxis: {
+                        data: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                    },
+                    series: [{
+                        // 根据名字对应到相应的系列
+                        data: data
+                    }]
+                });
+            });
+        }
+            // else if(a==4){
+            //         myChart.clear();
+            //         option = {
+            //             title: {
+            //                 text: year+'年教师KPI'
+            //             },
+            //             radar: {
+            //                 shape: 'circle',
+            //                 indicator: []
+            //             },
+            //             series: [{
+            //                 name: 'KPI',
+            //                 type: 'radar',
+            //                 data : []
+            //             }]
+            //         };
+            //
+            //         $.ajax({
+            //             type:"get",
+            //             url:"/statistics/coachKpi",
+            //             data:{"year":year},
+            //             dataType:"json",
+            //             success:function(res){
+            //                 let indicator = [];
+            //                 let data = [];
+            //                 let kpiData = [];
+            //                 for(let key in res){
+            //                     indicator.push({name:key,max:20000});
+            //                     kpiData.push(res[key]);
+            //                 }
+            //                 data.push({value:kpiData});
+            //                 option.radar.indicator = indicator;
+            //                 option.series[0].data = data;
+            //                 myChart.setOption(option);
+            //             }
+            //         });
+            //     }
+        // }
+        else if (a == 4) {
+            option = {
+                title: {
+                    text: year + '年教师KPI'
+                },
+                tooltip: {}, // 添加 tooltip 配置项
+                radar: {
+                    shape: 'circle',
+                    indicator: []
+                },
+                series: [{
+                    name: 'KPI',
+                    type: 'radar',
+                    data: []
+                }]
+            };
+
+            $.ajax({
+                type: "get",
+                url: "/statistics/coachKpi",
+                data: {"year": year},
+                dataType: "json",
+                success: function (res) {
+                    let indicator = [];
+                    let data = [];
+                    let kpiData = [];
+                    for (let key in res) {
+                        indicator.push({name: key, max: 20000});
+                        kpiData.push(res[key]);
+                    }
+                    data.push({value: kpiData, name: 'KPI'}); // 添加 name 属性
+                    option.radar.indicator = indicator;
+                    option.series[0].data = data;
+                    myChart.setOption(option);
+                }
+            });
+        }
+    }
+    // 指定图表的配置项和数据
+    var option=null;
+    option = {
+        title: {
+            text: year+'年每月收入统计'
+        },
+        tooltip: {},
+        legend: {
+            data:['金额']
+        },
+        xAxis: {
+            data: ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"],
+            axisLabel :{
+                interval:0
+            }
+        },
+        yAxis: {},
+        series: [{
+            name: '金额',
+            type: 'bar',
+            data:[]
+        }]
+    };
+
+    // 使用刚指定的配置项和数据显示图表。
+    myChart.setOption(option);
+    $.getJSON('/statistics/tongji',{"year":year},function(data){
+        //重新给table绑定数据
+        myChart.setOption({
+            xAxis: {
+                data: ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"]
+            },
+            series: [{
+                // 根据名字对应到相应的系列
+                name: '金额',
+                data: data
+            }]
+        });
+    }) ;
+
+
+        var countsChart = echarts.init(document.getElementById('counts'));
+        var countsOption = {
+        title: {
+        text: '营运数据统计图',
+        left: 'center'
+    },
+        tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+        type: 'shadow'
+    }
+    },
+        xAxis: {
+        type: 'category',
+        data: []
+    },
+        yAxis: {
+        type: 'value'
+    },
+        series: [{
+        type: 'bar',
+        data: [],
+        itemStyle: {
+        normal: {
+        color: function(params) {
+        var colorList = ['#c23531','#2f4554', '#61a0a8'];
+        return colorList[params.dataIndex];
+    }
+    }
+    }
+    }]
+    };
+
+        countsChart.setOption(countsOption);
+
+        $.getJSON('/statistics/counts', function (data) {
+        countsChart.setOption({
+            xAxis: {
+                data: ['会员数', '教师数', '课程数']
+            },
+            series: [{
+                data: [data.memberCount, data.coachCount, data.subjectCount]
+            }]
+        });
+    });
+
+</script>
+</body>
+</html>

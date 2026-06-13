@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:conntext="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop https://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--1.加载外部属性文件-->
+    <conntext:property-placeholder location="classpath*:db.properties" file-encoding="UTF-8" ignore-resource-not-found="true"/>
+
+    <!--2.数据源-->
+    <bean id="ds" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="${jdbc.driverClassName}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="url" value="${jdbc.url}"/>
+    </bean>
+
+    <!--3.Sqlsession工厂
+      MyBatis Plus使用SqlSessionFactoryBean子类MybatisSqlSessionFactoryBean
+    -->
+    <bean class="com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean">
+        <property name="dataSource" ref="ds"/>
+        <!--加载MyBatis配置文件-->
+        <property name="configLocation" value="classpath:mybatis.xml"/>
+    </bean>
+
+    <!--4.Mapper扫描-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.xq.mapper"/>
+    </bean>
+
+    <!--5.声明式事务  事务平台管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="ds"/>
+    </bean>
+
+    <!--6.开启事务的注解支持   @Transactional-->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!--7.包扫描-->
+    <conntext:component-scan base-package="com.xq"/>
+
+    <!--引入springSecurity的配置文件-->
+    <import resource="classpath:spring-security.xml"></import>
+
+    <!--开启注解aop的支持-->
+    <aop:aspectj-autoproxy />
+</beans>

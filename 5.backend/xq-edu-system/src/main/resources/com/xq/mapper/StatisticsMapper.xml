@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xq.mapper.StatisticsMapper">
+
+    <!--
+       每月收入统计
+    -->
+    <select id="sumMoneyByDate" resultType="int">
+        SELECT IFNULL(SUM(a.money),0)
+        FROM `chargerecords` AS a WHERE `chargetime` LIKE ('%${date}%')
+    </select>
+
+    <select id="sumKpiByCoach" resultType="int">
+        SELECT IFNULL(SUM(`countprice`),0)
+        FROM `privatecoachinfo` WHERE `coachid` = #{coachId} and date like ('%${year}%')
+    </select>
+</mapper>

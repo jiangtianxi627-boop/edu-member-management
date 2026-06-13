@@ -1,0 +1,470 @@
+<script src="/static/jquery-3.2.1.min.js">
+    window.onunload(alert("jin"))
+</script>
+<html>
+<head>
+    <title>用户列表</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/static/table/bootstrap-table.min.css"/>
+    <script type="text/javascript" src="/static/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/table/bootstrap-table.js"></script>
+    <script type="text/javascript" src="/static/table/locale/bootstrap-table-zh-CN.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/sweetalert/sweetalert.css"/>
+    <script type="text/javascript" src="/static/sweetalert/sweetalert.min.js"></script>
+    <script src="/static//bootstrap/js/tableExport.js"></script>
+    <link rel="stylesheet" href="/static/date/bootstrap-datetimepicker.min.css"/>
+    <script type="text/javascript" src="/static/date/Moment.js"></script>
+    <script type="text/javascript" src="/static/date/bootstrap-datetimepicker.min.js"></script>
+
+    <script>
+        $(function () {
+
+            //异步加载新增的时候的角色列表
+            $.getJSON("/adminrole/list", {}, function (releset) {
+                var e = releset.data;
+                $(e).each(function () {
+                    $('#adminRoles_add').append("<input type='checkbox' name='roleNames_add' value='" + this.id + "'/>" + this.roleName + "&nbsp;&nbsp;");
+                })
+            });
+
+
+            $('#srdata').datetimepicker({
+                //viewMode: 'day',
+                format: 'MM-DD'
+            });
+            $('#upsrdata').datetimepicker({
+                //viewMode: 'day',
+                format: 'MM-DD'
+            });
+
+            $('#dg').bootstrapTable({
+                url: '/adminuser/queryPage',
+                method: 'get',
+                contentType: "application/x-www-form-urlencoded",
+                columns: [
+                    {field: 'adminId', title: '用户编号', sortable: true},
+                    {field: 'adminName', title: '用户账号', sortable: true},
+                    {field: 'phone', title: '用户电话', sortable: true},
+                    {
+                        field: 'gender', title: '用户性别',
+                        formatter: function (value, row, index) {
+                            if (row.gender == 0) {
+                                return "女";
+                            } else {
+                                return "男";
+                            }
+                        }
+                    },
+                    {field: 'birthday', title: '用户生日', sortable: true},
+                    {field: 'idcard', title: '身份证号码'},
+                    {field: 'createTime', title: '创建日期'},
+                    {
+                        field: 'xx', title: '操作',
+                        formatter: function (value, row, index) {
+                            return "<a title='删除' href='javascript:del(" + row.adminId + ")'><span class='glyphicon glyphicon-trash'></span></a> | <a href='javascript:showupdate(" + row.adminId + ")'> <span class='glyphicon glyphicon-pencil'></span></a>";
+                        }
+
+                    }
+                ],
+                queryParamsType: '',
+                queryParams: queryParams,
+                height: 360,
+                pageList: [5, 10, 15],
+                pageNumber: 1,
+                pageSize: 5,
+                pagination: true,
+                sidePagination: 'server'
+            })
+        });
+
+        //单击修改
+        function showupdate(adminId) {
+
+            $('#adminRoles_update').html("");
+            $.getJSON('/adminuser/queryById/' + adminId, function (result) {
+                if (result.code == 200) {
+                    var data = result.data;
+                    //alert(JSON.stringify(data));
+                    $('#updateeModal').modal('show');
+
+
+                    //查询要回显的角色ID集合
+                    var roleIds = new Array();
+                    $.getJSON("/admin-user-role/queryByAdminId/" + adminId, {}, function (res) {
+                        if (res.code == 200) {
+                            var d = res.data;
+                            for (var i = 0; i < d.length; i++) {
+                                var roleId = d[i].roleId;
+                                roleIds.push(roleId);
+                            }
+                        }
+
+                        //要显示的所有的角色信息
+                        $.getJSON("/adminrole/list", {}, function (releset) {
+                            var e = releset.data;
+                            $(e).each(function () {
+                                if (isHasRoleId(roleIds,this.id)) {
+                                    $('#adminRoles_update').append("<input checked type='checkbox' name='roleNames_update' value='" + this.id + "'/>" + this.roleName + "&nbsp;&nbsp;");
+                                } else {
+                                    $('#adminRoles_update').append("<input type='checkbox' name='roleNames_update' value='" + this.id + "'/>" + this.roleName + "&nbsp;&nbsp;");
+                                }
+                            });
+                        })
+                    });
+
+                    $('#upadminName').val(data.adminName);
+                    $('#upphone').val(data.phone);
+                    $('#upbirthday').val(data.birthday);
+                    $('#upidcard').val(data.idcard);
+                    $('#upgender').val(data.gender);
+                    $('#upadminId').val(data.adminId);
+
+                } else {
+                    swal("温馨提示！", "服务器异常", "error");
+                }
+            });
+        }
+
+        function isHasRoleId(roleIds, roleId) {
+            var b = false;
+            for (var i = 0; i < roleIds.length; i++) {
+                if (roleIds[i] == roleId) {
+                    b = true;
+                    break;
+                }
+            }
+            return b;
+        }
+
+        //获取当前的条件个页面页数即使更新值
+        function queryParams(afds) {
+            var i = {
+                "pageSize": afds.pageSize,
+                "pageNumber": afds.pageNumber,
+                "adminName": $('#adminName').val()
+
+            };
+            return i;
+        }
+
+        //查询
+        function search() {
+            var opt = $('#dg').bootstrapTable('getOptions');
+            var adminName = $('#adminName').val();
+            $.getJSON("/adminuser/queryPage", {
+                "pageSize": opt.pageSize,
+                "pageNumber": 1,
+                "adminName": adminName
+            }, function (releset) {
+                $("#dg").bootstrapTable('load', releset);
+            })
+        }
+
+        //点击新增按钮
+        function insert() {
+
+            $('#admin_Name').val("");
+            $('#adminPassword').val("");
+            $('#phone').val("");
+            $('#gender').val("");
+            $('#birthday').val("");
+            $('#idcard').val("");
+
+            //弹出模态框
+            $('#exampleModal').modal('show');
+        }
+
+        function del(adminId) {
+
+            swal({
+                    title: "确定删除吗？",
+                    text: "您将无法恢复！",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#DD6B55",
+                    confirmButtonText: "确定删除！",
+                    cancelButtonText: "取消删除！",
+                    closeOnConfirm: false,
+                    closeOnCancel: false
+                },
+                function (isConfirm) {
+                    if (isConfirm) {
+                        var opt = $('#table').bootstrapTable('getOptions');
+
+                        $.post("/adminuser/delete/"+adminId, {"_method":"delete"}, function (releset) {
+                            if (releset.code== 200) {
+                                $("#dg").bootstrapTable('load', releset);
+                                swal(
+                                    {
+                                        title: "删除成功",
+                                        type: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }
+                                );
+                                search();
+                            } else {
+                                swal(
+                                    {
+                                        title: "删除失败",
+                                        type: "warning",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    }
+                                )
+                            }
+                        })
+
+                    } else {
+                        swal("取消！", "您已取消删除)", "error");
+                    }
+                });
+
+        }
+
+        function tianjia() {
+
+            var adminName = $('#admin_Name').val();
+            var adminPassword = $('#adminPassword').val();
+            var phone = $('#phone').val();
+            var gender = $('#gender').val();
+            var birthday = $('#birthday').val();
+            var idcard = $('#idcard').val();
+
+            var roleIds = new Array();
+            var roleNames_add = $("[name='roleNames_add']:checked");
+            for (var i = 0; i < roleNames_add.length; i++) {
+                var roleId = roleNames_add[i].value;
+                roleIds.push(roleId);
+            }
+            if (roleIds.length == 0) {
+                alert("请选中角色！");
+                return;
+            }
+
+            $.post("/adminuser/add", {
+                "adminName": adminName,
+                "adminPassword": adminPassword,
+                "phone": phone,
+                "gender": gender,
+                "birthday": birthday,
+                "idcard": idcard,
+                "roleIds": roleIds.toString()
+            }, function (releset) {
+                if (releset.code == 200) {
+                    $("#dg").bootstrapTable('load', releset);
+                    $('#exampleModal').modal('hide');
+                    swal(
+                        {
+                            title: "添加成功",
+                            type: "success",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    );
+                    //查询
+                    search();
+
+                } else {
+                    swal(
+                        {
+                            title: "添加失败",
+                            type: "warning",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    )
+                }
+            })
+        }
+
+
+        function upd() {
+            var upadminId = $('#upadminId').val();
+            var upadminName = $('#upadminName').val();
+            var upphone = $('#upphone').val();
+            var upgender = $('#upgender').val();
+            var upbirthday = $('#upbirthday').val();
+            var upidcard = $('#upidcard').val();
+
+
+            var roleIds = new Array();
+            var roleNames_update = $("[name='roleNames_update']:checked");
+            for (var i = 0; i < roleNames_update.length; i++) {
+                var roleId = roleNames_update[i].value;
+                roleIds.push(roleId);
+            }
+            if (roleIds.length == 0) {
+                alert("请选中角色！");
+                return;
+            }
+            $.post("/adminuser/update", {
+                "adminId":upadminId,
+                "adminName": upadminName,
+                "phone": upphone,
+                "gender": upgender,
+                "birthday": upbirthday,
+                "idcard": upidcard,
+                "roleIds": roleIds.toString(),
+                "_method":"put"
+            }, function (releset) {
+                if (releset.code == 200) {
+                    $("#dg").bootstrapTable('load', releset);
+                    $('#updateeModal').modal('hide');
+                    swal(
+                        {
+                            title: "更新成功",
+                            type: "success",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    );
+                    //查询
+                    search();
+                } else {
+                    swal(
+                        {
+                            title: "更新失败",
+                            type: "warning",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    )
+                }
+            })
+        }
+
+
+    </script>
+</head>
+<body background="/static/HTmoban/images/tongji4.jpg">
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <form class="form-inline">
+            <div class="input-group input-daterange">
+                <label for="adminName" class="control-label">用户账号:</label>
+                <input id="adminName" type="text" class="form-control">
+            </div>
+            <button onclick="search()" type="button" class="btn btn-default" style="margin-top: 20px">查询</button>
+            <button type="button" class="btn btn-default" style="float: right; margin-top: 20px" data-toggle="modal"
+                    onclick="insert()"><span class="glyphicon glyphicon-plus"></span>添加用户
+            </button>
+            <button type="button" style="margin-left:20px;" id="btn_download" class="btn btn-primary"
+                    onClick="$('#dg').tableExport({ type: 'excel', escape: 'false' })">数据导出
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<div>
+    <table id="dg"></table>
+</div>
+
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="exampleModalLabel">用户添加</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="admin_Name" class="control-label">用户账号:</label>
+                        <input type="text" class="form-control" id="admin_Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPassword" class="control-label">用户密码:</label>
+                        <input type="password" class="form-control" id="adminPassword">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone" class="control-label">电话:</label>
+                        <input type="text" class="form-control" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="gender" class="control-label">性别:</label>
+                        <select class="form-control" id="gender">
+                            <option value="1">男</option>
+                            <option value="0">女</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="birthday" class="control-label">生日:</label>
+                        <input type="date" class="form-control" id="birthday"/>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">用户角色:</label>
+                        <div id="adminRoles_add">
+
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="idcard" class="control-label">身份证号码:</label>
+                        <input type="text" class="form-control" id="idcard">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="tianjia()">添加用户</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="updateeModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">用户更新</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="upadminName" class="control-label">用户账号:</label>
+                        <input type="text" class="form-control" id="upadminName">
+                        <input type="hidden" id="upadminId">
+                    </div>
+                    <div class="form-group">
+                        <label for="upphone" class="control-label">电话:</label>
+                        <input type="text" class="form-control" id="upphone">
+                    </div>
+                    <div class="form-group">
+                        <label for="upgender" class="control-label">性别:</label>
+                        <select class="form-control" id="upgender">
+                            <option value="1">男</option>
+                            <option value="0">女</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="upbirthday" class="control-label">生日:</label>
+                        <input type="date" class="form-control" id="upbirthday"/>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label">用户角色:</label>
+                        <div id="adminRoles_update">
+
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="upidcard" class="control-label">身份证号码:</label>
+                        <input type="text" class="form-control" id="upidcard">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="upd()">修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

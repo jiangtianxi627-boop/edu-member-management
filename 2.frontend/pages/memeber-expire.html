@@ -1,0 +1,251 @@
+<script src="/static/jquery-3.2.1.min.js">
+    window.onunload(alert("jin"))
+</script>
+<html>
+<head>
+    <title>会员列表</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.css" />
+    <link rel="stylesheet" href="/static/table/bootstrap-table.min.css" />
+    <script type="text/javascript" src="/static/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/table/bootstrap-table.js"></script>
+    <script type="text/javascript" src="/static/table/locale/bootstrap-table-zh-CN.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/sweetalert/sweetalert.css" />
+    <script type="text/javascript" src="/static/sweetalert/sweetalert.min.js"></script>
+    <script src="/static//bootstrap/js/tableExport.js"></script>
+    <link rel="stylesheet" href="/static/date/bootstrap-datetimepicker.min.css" />
+    <script type="text/javascript" src="/static/date/Moment.js"></script>
+    <script type="text/javascript" src="/static/date/bootstrap-datetimepicker.min.js"></script>
+
+    <script>
+        $(function () {
+
+            //异步加载卡类型下拉框
+            $.getJSON("/membertype/list",{},function (releset) {
+                var e=releset.data;
+                $(e).each(function () {
+                    $('#ktype').append('<option value='+this.typeId+' >'+this.typeName+'</option>');
+                })
+            });
+
+            $('#srdata').datetimepicker({
+                //viewMode: 'day',
+                format: 'MM-DD'
+            });
+            $('#upsrdata').datetimepicker({
+                //viewMode: 'day',
+                format: 'MM-DD'
+            });
+            $('#dg').bootstrapTable({
+                url:'/member/queryPageExpire',
+                method:'get',
+                contentType:"application/x-www-form-urlencoded",
+                columns:[
+                    { field:'memberId',title:'会员编号',sortable: true},
+                    { field:'memberName',title:'名称',sortable: true},
+                    { field:'memberPhone',title:'电话',sortable: true},
+                    { field:'memberSex',title:'性别',
+                        formatter:function (value,row,index) {
+                            if(row.memberSex==0){
+                                return "女";
+                            }else{
+                                return "男";
+                            }
+                        }
+                    },
+                    { field:'memberAge',title:'年龄',sortable: true},
+                    { field:'birthday',title:'生日',sortable: true},
+                    { field:'membertype.typeName',title:'卡类型'},
+                    { field:'nenberDate',title:'录入日期'},
+                    { field:'xxx',title:'会员状态',
+                        formatter:function (value,row,index) {
+                            if(row.memberStatic==1){
+                                return "正常"
+                            }else{
+                                return "<p style='color:red'>请续卡</p>"
+                            }
+                        }
+                    },
+                    { field:'xxx',title:'会员余额',
+                        formatter:function (value,row,index) {
+                            if(row.memberbalance==0){
+                                return "<p style='color:red'>请缴费</p>"
+                            }else if(row.memberbalance<10){
+                                return "<p style='color:red'>余额不足10元</p>";
+                            }else{
+                                return row.memberbalance;
+                            }
+                        }
+                    },
+                    { field:'memberxufei',title:'到期日期'}
+                ],
+                queryParamsType:'',
+                queryParams:queryParams,
+                height:360,
+                pageList:[5,10,15],
+                pageNumber:1,
+                pageSize:5,
+                pagination:true,
+                sidePagination:'server'
+            })
+        });
+
+        //获取当前的条件个页面页数即使更新值
+        function queryParams(afds){
+            var i={
+                "pageSize":afds.pageSize,
+                "pageNumber":afds.pageNumber,
+                "id":$('#hyid').val(),
+                "ktype":$('#ktype').val()
+
+            };
+            return i;
+        }
+        //查询
+        function search(){
+            var opt=$('#dg').bootstrapTable('getOptions');
+            var hyid=$('#hyid').val();
+            var ktype=$('#ktype').val();
+
+            $.getJSON("/member/queryPageExpire",{"pageSize":opt.pageSize,"pageNumber":opt.pageNumber,"hyname":hyid,"ktype":ktype},function (releset) {
+                $("#dg").bootstrapTable('load',releset) ;
+            })
+        }
+
+
+    </script>
+</head>
+<body background="/static/HTmoban/images/tongji4.jpg">
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <form class="form-inline">
+            <div  class="input-group input-daterange">
+                <label for="hyid" class="control-label">姓名:</label>
+                <input id="hyid" type="text" class="form-control">
+            </div>
+            <div  class="input-group input-daterange">
+                <label for="ktype" class="control-label">卡型:</label>
+                <select class="form-control" id="ktype">
+                    <option value="0">请选择</option>
+                </select>
+            </div>
+            <button onclick="search()" type="button" class="btn btn-default" style="margin-top: 20px" >查询</button>
+            <button type="button" style="margin-left:20px;" id="btn_download" class="btn btn-primary" onClick ="$('#dg').tableExport({ type: 'excel', escape: 'false' })">数据导出</button>
+
+        </form>
+    </div>
+
+</div>
+
+<div>
+    <table id="dg"></table>
+</div>
+
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">会员添加</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="name" class="control-label">姓名:</label>
+                        <input type="text" class="form-control" id="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone" class="control-label">电话:</label>
+                        <input type="text" class="form-control" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="sex" class="control-label">性别:</label>
+                        <select class="form-control" id="sex">
+                            <option value="1">男</option>
+                            <option value="0">女</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="age" class="control-label">年龄:</label>
+                        <input type="text" class="form-control" id="age">
+                    </div>
+                    <div class="form-group">
+                        <label for="srdata" class="control-label">生日:</label>
+                        <input type="text" class="form-control" id="srdata">
+                    </div>
+                    <div class="form-group">
+                        <label for="optype" class="control-label">卡型:</label>
+                        <select class="form-control" id="optype">
+                            <option value="0">请选择</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="data" class="control-label">时间:</label>
+                        <input type="text" class="form-control" id="data" disabled="disabled">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="tianjia()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="updateeModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="updateModalLabel">会员修改</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="upid">
+                    <div class="form-group">
+                        <label for="name" class="control-label">姓名:</label>
+                        <input type="text" class="form-control" id="upname">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone" class="control-label">电话:</label>
+                        <input type="text" class="form-control" id="upphone">
+                    </div>
+                    <div class="form-group">
+                        <label for="sex" class="control-label">性别:</label>
+                        <select class="form-control" id="upsex">
+                            <option value="1">男</option>
+                            <option value="0">女</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="age" class="control-label">年龄:</label>
+                        <input type="text" class="form-control" id="upage">
+                    </div>
+                    <div class="form-group">
+                        <label for="srdata" class="control-label">生日:</label>
+                        <input type="text" class="form-control" id="upsrdata">
+                    </div>
+                    <div class="form-group">
+                        <label for="optype" class="control-label">卡型:</label>
+                        <select class="form-control" id="upoptype">
+                            <option value="0">请选择</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="data" class="control-label">时间:</label>
+                        <input type="text" class="form-control" id="updata" disabled="disabled">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="upd()">修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

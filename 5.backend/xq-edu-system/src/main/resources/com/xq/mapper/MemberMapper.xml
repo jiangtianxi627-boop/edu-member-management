@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xq.mapper.MemberMapper">
+    <resultMap id="memberMap" type="member">
+        <id column="memberId" property="memberId"></id>
+        <result column="memberName" property="memberName"></result>
+        <result column="memberPhone" property="memberPhone"></result>
+        <result column="memberSex" property="memberSex"></result>
+        <result column="memberAge" property="memberAge"></result>
+        <result column="memberTypes" property="memberTypes"></result>
+        <result column="nenberDate" property="nenberDate"></result>
+        <result column="birthday" property="birthday"></result>
+        <result column="memberStatic" property="memberStatic"></result>
+        <result column="memberbalance" property="memberbalance"></result>
+        <result column="memberxufei" property="memberxufei"></result>
+        <!--描述1对1的关系-->
+        <association property="membertype" javaType="Membertype">
+            <id column="typeId" property="typeId"></id>
+            <result column="typeName" property="typeName"></result>
+            <result column="typeciShu" property="typeciShu"></result>
+            <result column="typeDay" property="typeDay"></result>
+            <result column="typemoney" property="typemoney"></result>
+        </association>
+    </resultMap>
+
+    <select id="totalCount" resultType="int">
+        select count(*)  from member  inner join membertype on member.memberTypes = membertype.typeId
+        where member.del = 0 and membertype.typeDel = 0
+        <if test="hyname != null and hyname !='' ">
+            and memberName like '%${hyname}%'
+        </if>
+
+        <if test="ktype != null and ktype !=0 ">
+            and memberTypes = #{ktype}
+        </if>
+
+        <if test="nowtime!=null and nowtime!=''">
+            and memberxufei&lt;#{nowtime}
+        </if>
+
+    </select>
+
+    <select id="pageMembers" resultMap="memberMap">
+        select * from member inner join membertype on member.memberTypes = membertype.typeId
+        where member.del = 0 and membertype.typeDel = 0
+
+        <if test="hyname != null and hyname !='' ">
+            and memberName like '%${hyname}%'
+        </if>
+
+        <if test="ktype != null and ktype !=0 ">
+            and memberTypes = #{ktype}
+        </if>
+        <if test="nowtime!=null and nowtime!=''">
+            and memberxufei&lt;#{nowtime}
+        </if>
+        limit #{pageStart},#{pageSize}
+    </select>
+</mapper>

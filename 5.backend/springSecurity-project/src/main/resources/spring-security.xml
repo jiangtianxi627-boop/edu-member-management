@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/security
+       http://www.springframework.org/schema/security/spring-security.xsd">
+
+    <!--配置资源的匿名访问-->
+    <security:http security="none" pattern="/pages/a.html"></security:http>
+    <security:http security="none" pattern="/pages/b.html"></security:http>
+    <security:http security="none" pattern="/login.html"></security:http>
+    <security:http security="none" pattern="/failure.html"></security:http>
+
+    <!--
+        security:http: 用来定义相关的权限控制
+            auto-config="true" 开启springSecurity框架的自动配置(比如提供默认的登录页面)
+            use-expressions: 配置springSecurity的表达式
+    -->
+    <security:http auto-config="true" use-expressions="true">
+        <!--放行login.jsp页面-->
+        <security:intercept-url pattern="/login.jsp" access="permitAll()"></security:intercept-url>
+        <!--
+             security:intercept-url: 定义资源的拦截规则
+                 pattern：描述对哪些资源进行访问  /**指的是所有资源
+                 access：我们对pattern描述的资源进行操作需要什么权限。
+                         hasAnyRole这是springSecurity提供的表达式，指定访问资源的角色列表，这些列表用逗号分隔。每一个角色前面需要加上ROLE_的前缀。
+        -->
+        <security:intercept-url pattern="/**" access="hasAnyRole('ROLE_ADMIN','ROLE_USER')"></security:intercept-url>
+
+        <!--
+            security:form-login: 配置自定义登录页面的标签
+                login-page="/login.html" 自定义登录页面的名称
+                username-parameter： 用户名表单控件的名称
+                password-parameter： 密码表单控件的名称
+                login-processing-url: 处理认证业务的url
+                default-target-url: 认证成功之后，调整到的页面名称
+                authentication-failure-url: 认证失败跳转的页面名称
+        -->
+        <security:form-login login-page="/login.jsp"
+                             username-parameter="username"
+                             password-parameter="password"
+                             login-processing-url="/login.do"
+                             default-target-url="/index.jsp"
+                             authentication-failure-url="/failure.html"
+        />
+
+        <!--关闭csrf过滤器-->
+       <!-- <security:csrf disabled="true"></security:csrf>-->
+    </security:http>
+
+    <!--配置认证管理器-->
+    <security:authentication-manager>
+        <!--配置认证提供者-->
+        <security:authentication-provider user-service-ref="customizdAuthenticationManger">
+            <!--配置认证服务-->
+           <!-- <security:user-service>
+                &lt;!&ndash;
+                  security:user 配置用户信息
+                      name: 用户名
+                      password: 密码  {noop} 如果我们用的是明文密码，需要在前面加上一个{noop}的前缀
+                      authorities： 当前用户的角色
+                 &ndash;&gt;
+                <security:user name="user" password="{noop}user" authorities="ROLE_SYSTEM"></security:user>
+                <security:user name="admin" password="{noop}admin" authorities="ROLE_ADMIN"></security:user>
+            </security:user-service>-->
+        </security:authentication-provider>
+    </security:authentication-manager>
+
+    <bean id="customizdAuthenticationManger" class="com.xq.auth.CustomizdAuthenticationManger"></bean>
+</beans>

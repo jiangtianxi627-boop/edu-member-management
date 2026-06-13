@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/mvc https://www.springframework.org/schema/mvc/spring-mvc.xsd http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd http://www.springframework.org/schema/aop https://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--扫描控制器-->
+    <tx:component-scan base-package="com.xq.controller"/>
+
+    <!--静态资源放行 把静态资源交给 tomcat默认的servet处理 SpringMvc不管！-->
+    <mvc:default-servlet-handler/>
+
+    <!--开启注解驱动-->
+    <mvc:annotation-driven/>
+
+    <!--模板引擎解析器-->
+    <bean id="templateResolver" class="org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver">
+        <property name="prefix" value="/WEB-INF/templates/"/>
+        <property name="suffix" value=".html"/>
+        <!--模板引擎使用严格的HTML语法-->
+        <property name="templateMode" value="LEGACYHTML5"/>
+        <!--模板引擎要不要缓存-->
+        <property name="cacheable" value="false"/>
+        <property name="characterEncoding" value="UTF-8"/>
+    </bean>
+
+    <!--模板引擎-->
+    <bean id="templateEngine" class="org.thymeleaf.spring5.SpringTemplateEngine">
+        <property name="templateResolver" ref="templateResolver"/>
+        <!--配置thymeleaf标签库-->
+        <property name="additionalDialects">
+            <set>
+                <bean class="org.thymeleaf.extras.springsecurity5.dialect.SpringSecurityDialect"/>
+            </set>
+        </property>
+    </bean>
+
+    <!--Thymeleaf模板引擎整合到Spring环境中-->
+    <bean class="org.thymeleaf.spring5.view.ThymeleafViewResolver">
+        <property name="templateEngine" ref="templateEngine"/>
+        <!-- 中文乱码问题 -->
+        <property name="characterEncoding" value="UTF-8"/>
+    </bean>
+
+    <!--配置文件上传视图解析器-->
+    <!-- id 的值是固定的 SpringMvc程序内部使用对象名-->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <!-- 设置上传文件的最大尺寸为5MB  字节为单位-->
+        <property name="maxUploadSize" value="5242880"/>
+    </bean>
+
+    <!--
+       开启权限控制注解支持
+           jsr250-annotations="enabled"表示支持jsr250-api的注解，需要jsr250-api的jar包
+                   <dependency>
+                    <groupId>javax.annotation</groupId>
+                    <artifactId>jsr250-api</artifactId>
+                    <version>1.0</version>
+                  </dependency>
+
+           pre-post-annotations="enabled"表示支持spring表达式注解
+           secured-annotations="enabled"这才是SpringSecurity提供的注解
+ -->
+    <security:global-method-security jsr250-annotations="enabled"
+                                     pre-post-annotations="enabled"
+                                     secured-annotations="enabled"/>
+
+    <!--开启注解aop的支持-->
+    <aop:aspectj-autoproxy />
+</beans>

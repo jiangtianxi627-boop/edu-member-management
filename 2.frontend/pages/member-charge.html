@@ -1,0 +1,230 @@
+<script src="/static/jquery-3.2.1.min.js">
+    window.onunload(alert("jin"))
+</script>
+<html>
+<head>
+    <title>会员充值</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.css" />
+    <link rel="stylesheet" href="/static/table/bootstrap-table.min.css" />
+    <script type="text/javascript" src="/static/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/table/bootstrap-table.js"></script>
+    <script type="text/javascript" src="/static/table/locale/bootstrap-table-zh-CN.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/sweetalert/sweetalert.css" />
+    <script type="text/javascript" src="/static/sweetalert/sweetalert.min.js"></script>
+
+    <link rel="stylesheet" href="/static/date/bootstrap-datetimepicker.min.css" />
+    <script type="text/javascript" src="/static/date/Moment.js"></script>
+    <script type="text/javascript" src="/static/date/bootstrap-datetimepicker.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.4/css/bootstrap-select.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.4/js/bootstrap-select.min.js"></script>
+
+    <script>
+        $(function () {
+
+            //异步加载卡类型下拉框
+            $.getJSON("/membertype/list",{},function (releset) {
+                var e=releset.data;
+                $(e).each(function () {
+                    $('#ktype').append('<option value='+this.typeId+' >'+this.typeName+'</option>');
+                })
+            });
+
+            $('#srdata').datetimepicker({
+                //viewMode: 'day',
+                format: 'MM-DD'
+            });
+            $('#dg').bootstrapTable({
+                url:'/member-charge/queryPageCharge',
+                method:'get',
+                contentType:"application/x-www-form-urlencoded",
+                columns:[
+                    { field:'memberId',title:'会员编号',sortable: true},
+                    { field:'memberName',title:'名称',sortable: true},
+                    { field:'memberPhone',title:'电话',sortable: true},
+                    { field:'membertypes.typeName',title:'卡类型'},
+                    { field:'nenberDate',title:'录入日期'},
+                    { field:'xxx',title:'会员状态',
+                        formatter:function (value,row,index) {
+                            if(row.memberStatic==1){
+                                return "<p style='color:green'>正常</p>"
+                            }else{
+                                return "<p style='color:red'>请续卡</p>"
+                            }
+                        }
+                    },
+                    { field:'xxx',title:'会员余额',
+                        formatter:function (value,row,index) {
+                            if(row.memberbalance==0){
+                                return "<p style='color:red'>请缴费</p>"
+                            }else if(row.memberbalance<10){
+                                return "<p style='color:red'>余额不足10元</p>";
+                            }else{
+                                return row.memberbalance;
+                            }
+                        }
+                    },
+                    { field:'memberxufei',title:'到期日期'},
+                    { field:'xxx',title:'操作',
+                        formatter:function (value,row,index) {
+                            return "<a title='会员充值' href='javascript:xufei(" + row.memberId + ")'><span class='glyphicon glyphicon-arrow-right'>会员充值</span></a>";
+                        }
+                    },
+                ],
+                queryParamsType:'',
+                queryParams:queryParams,
+                height:360,
+                pageList:[5,10,15],
+                pageNumber:1,
+                pageSize:5,
+                pagination:true,
+                sidePagination:'server',
+                onDblClickRow:function(row,$element,field) {
+
+                }
+            })
+        });
+
+        //获取当前的条件个页面页数即使更新值
+        function queryParams(afds){
+            var i={
+                "pageSize":afds.pageSize,
+                "pageNumber":afds.pageNumber,
+                "id":$('#hyid').val(),
+                "ktype":$('#ktype').val()
+
+            };
+            return i;
+        }
+        //查询
+        function search(){
+            var opt=$('#dg').bootstrapTable('getOptions');
+            var hyid=$('#hyid').val();
+            var ktype=$('#ktype').val();
+            $.getJSON("/member-charge/queryPageCharge",{"pageSize":opt.pageSize,"pageNumber":opt.pageNumber,"hyname":hyid,"ktype":ktype},function (releset) {
+                $("#dg").bootstrapTable('load',releset) ;
+            })
+        }
+
+        //弹出续费框
+        function xufei(id) {
+            $('#xzmoney').val("");
+            $('#bz').val("");
+
+            $('#ycy').val(id);
+            //充值模态框
+            $('#updateeModal').modal('show');
+        }
+
+
+        //充值
+        function cz() {
+            if(!validateAdd()){
+                return;
+            }
+            var id=$('#ycy').val();
+            var jine=$('#xzmoney').val();
+            var bz=$('#bz').val();
+            $.post("/member-charge/charge",{"remark":bz,"memberId":id,"money":jine},function (releset) {
+                if(releset.code == 200){
+                    $("#dg").bootstrapTable('load',releset) ;
+                    //关闭
+                    $('#updateeModal').modal('hide');
+                    swal(
+                        {
+                            title:"充值成功",
+                            type:"success",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    );
+                    //查询
+                    search();
+                }else{
+                    swal(
+                        {
+                            title:"充值失败",
+                            type:"warning",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }
+                    )
+                }
+            })
+        }
+
+        function validateAdd() {
+            $("#xzmoney").parent().find("span").remove();
+            $("#ssmoney").parent().find("span").remove();
+
+            var xzmoney = $("#xzmoney").val().trim();
+            if(xzmoney == null || xzmoney == ""){
+                $("#xzmoney").parent().append("<span style='color:red'>请填写金额</span>");
+                return false;
+            }
+
+            if(!(/^[1-9]\d*$/.test(xzmoney))){
+                $("#xzmoney").parent().append("<span style='color:red'>金额只能为正整数</span>");
+                return false;
+            }
+            return true;
+        }
+
+    </script>
+</head>
+<body background="/static/HTmoban/images/tongji4.jpg">
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <form class="form-inline">
+            <div  class="input-group input-daterange">
+                <label for="hyid" class="control-label">姓名:</label>
+                <input id="hyid" type="text" class="form-control">
+            </div>
+            <div  class="input-group input-daterange">
+                <label for="ktype" class="control-label">卡型:</label>
+                <select class="form-control" id="ktype">
+                    <option value="0">请选择</option>
+                </select>
+            </div>
+            <button onclick="search()" type="button" class="btn btn-default" style="margin-top: 20px" >查询</button>
+        </form>
+    </div>
+
+</div>
+
+<div>
+    <table id="dg"></table>
+</div>
+
+<!--充值模态框-->
+<div class="modal fade" id="updateeModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="updateModalLabel">会员充值</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div>
+                        <label for="xzmoney" class="control-label">充值金额:</label>
+                        <input class="form-control" type="text" id="xzmoney">
+                    </div>
+                    <div>
+                        <label for="bz" class="control-label">充值备注:</label>
+                        <input class="form-control" type="text" id="bz">
+                    </div>
+                    <input type="hidden" id="ycy">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="cz()">会员充值</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
